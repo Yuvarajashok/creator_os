@@ -1,5 +1,9 @@
 # Creator OS API Documentation
 
+[README](README.md) · [Setup](SETUP.md) · [Known issues](docs/TESTING_AND_LIMITATIONS.md)
+
+This is a source-based reference. JSON response examples are illustrative, not captured test results. Resolve the documented startup blockers before using the endpoints.
+
 Base URL: `http://localhost:8000` (development)
 
 ## Authentication
@@ -227,6 +231,8 @@ Authorization: Bearer <token>
 ## Intelligence
 
 ### Get Intelligence Score
+
+This GET handler also inserts an intelligence-score record in the database. Repeated reads can therefore create records. Scores are heuristic/model outputs, not validated growth forecasts.
 
 ```http
 GET /api/v1/intelligence/{page_id}?days=30

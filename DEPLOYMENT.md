@@ -1,266 +1,39 @@
-# Creator OS Deployment Guide
+# Deployment considerations
 
-This guide covers deploying Creator OS to various platforms.
+[README](README.md) · [Setup](SETUP.md) · [Known issues](docs/TESTING_AND_LIMITATIONS.md)
 
-## Prerequisites
+No deployment was performed or verified for this documentation update. Resolve the known ORM and container/environment blockers, then validate in staging before exposing the application.
 
-- Docker installed
-- Supabase account with database configured
-- Redis instance (can use Docker or cloud provider)
+## Service layout
 
-## Environment Configuration
+- Backend: working directory backend/, dependencies from requirements.txt.
+- Frontend: working directory frontend/, npm ci followed by npm run build; output dist/.
+- Celery worker and beat: backend environment and Redis connectivity.
+- PostgreSQL: reviewed schema from supabase/migrations/.
+- Persistent model directory: AI_MODEL_PATH for generated per-page models/scalers.
 
-Create a `.env` file with the following variables:
+The repository does not contain docker-compose.prod.yml. Do not run an example referring to that nonexistent file. The existing docker-compose.yml uses development commands and has the mismatches described in SETUP.md.
 
-```bash
-# Backend Configuration
-ENVIRONMENT=production
-DEBUG=False
-SECRET_KEY=your-production-secret-key-min-32-chars
+## Frontend configuration
 
-# Supabase Configuration
-SUPABASE_URL=https://your-project.supabase.co
-SUPABASE_ANON_KEY=your-anon-key
-SUPABASE_SERVICE_KEY=your-service-role-key
-DATABASE_URL=postgresql://postgres:[password]@[host]:[port]/postgres
+VITE_API_URL must point to the reachable backend when building the frontend. Vite embeds this configuration in built assets; setting a variable only after an Nginx image is built does not rewrite its JavaScript.
 
-# Redis Configuration (use your cloud Redis URL)
-REDIS_URL=redis://your-redis-host:6379/0
+Serve dist/ with SPA navigation fallback. The provided frontend image serves Nginx on port 80, unlike the development server's port 3000.
 
-# JWT Configuration
-JWT_SECRET_KEY=your-jwt-secret-min-32-chars
-JWT_ALGORITHM=HS256
-ACCESS_TOKEN_EXPIRE_MINUTES=30
+## Backend configuration
 
-# CORS Configuration
-BACKEND_CORS_ORIGINS=["https://your-frontend-domain.com"]
+Provide all required settings to API, worker, and scheduler processes. Use dedicated secrets, appropriate CORS origins, HTTPS, and restricted database/Redis access. Validate authentication and cross-user ownership with actual tests.
 
-# Celery Configuration
-CELERY_BROKER_URL=redis://your-redis-host:6379/0
-CELERY_RESULT_BACKEND=redis://your-redis-host:6379/0
-```
+The /health route returns a process-level status payload; it does not perform database or Redis readiness checks.
 
-## Render Deployment
+## Data protection and operation
 
-### Backend Service
+- Keep .env files, real credentials, database exports, user data, and generated model artifacts out of Git.
+- Disable mock sync for real datasets; the current task generates random metrics.
+- Back up the database and model artifacts privately; test recovery into an isolated environment.
+- Confirm the actual database provider's backup/retention settings instead of assuming automatic backups exist.
+- Run only one intended beat schedule to avoid duplicate jobs.
+- Record dependency/build versions, deployment configuration, and validation results for reproducibility.
+- A trained artifact should come from a trusted source; loading arbitrary serialized models is not a data-import feature.
 
-1. Create new Web Service
-2. Connect your GitHub repository
-3. Configure:
-   - **Build Command**: `pip install -r requirements.txt`
-   - **Start Command**: `gunicorn main:app -w 4 -k uvicorn.workers.UvicornWorker --bind 0.0.0.0:$PORT`
-   - **Environment**: Add all variables from `.env`
-   - **Health Check Path**: `/health`
-
-### Celery Worker
-
-1. Create new Background Worker
-2. Configure:
-   - **Build Command**: `pip install -r requirements.txt`
-   - **Start Command**: `celery -A background_tasks.celery_app worker --loglevel=info`
-   - **Environment**: Same as backend
-
-### Celery Beat Scheduler
-
-1. Create new Background Worker
-2. Configure:
-   - **Build Command**: `pip install -r requirements.txt`
-   - **Start Command**: `celery -A background_tasks.celery_app beat --loglevel=info`
-   - **Environment**: Same as backend
-
-### Frontend Service
-
-1. Create new Static Site
-2. Configure:
-   - **Build Command**: `npm install && npm run build`
-   - **Publish Directory**: `dist`
-   - **Environment Variables**:
-     - `VITE_API_URL=https://your-backend.onrender.com`
-
-## Railway Deployment
-
-1. Install Railway CLI:
-```bash
-npm install -g @railway/cli
-```
-
-2. Login and initialize:
-```bash
-railway login
-railway init
-```
-
-3. Deploy:
-```bash
-railway up
-```
-
-4. Set environment variables in Railway dashboard
-
-## DigitalOcean App Platform
-
-1. Connect your GitHub repository
-2. Configure components:
-
-**Backend API**:
-- Type: Web Service
-- Dockerfile: `backend/Dockerfile`
-- HTTP Port: 8000
-- Environment variables from `.env`
-
-**Celery Worker**:
-- Type: Worker
-- Dockerfile: `backend/Dockerfile`
-- Run Command: `celery -A background_tasks.celery_app worker --loglevel=info`
-
-**Frontend**:
-- Type: Static Site
-- Dockerfile: `frontend/Dockerfile`
-- Environment: `VITE_API_URL`
-
-## Docker Compose Production
-
-For self-hosted deployment:
-
-1. Update `docker-compose.yml` for production
-2. Add production environment variables
-3. Use production-ready PostgreSQL and Redis
-4. Deploy:
-
-```bash
-docker-compose -f docker-compose.prod.yml up -d
-```
-
-## Redis Setup
-
-### Redis Cloud (Recommended)
-
-1. Sign up at https://redis.com/try-free/
-2. Create a database
-3. Copy the connection URL
-4. Update `REDIS_URL` in your environment
-
-### Railway Redis
-
-```bash
-railway add redis
-```
-
-### Render Redis
-
-Create a Redis instance in Render dashboard.
-
-## Database Migration
-
-Your Supabase database should already have the schema applied. If deploying fresh:
-
-1. Go to Supabase Dashboard
-2. SQL Editor
-3. Run the migration from `backend/database/migrations/`
-
-## Health Checks
-
-- Backend: `GET /health`
-- Expected response: `{"status": "healthy", "environment": "production", "version": "1.0.0"}`
-
-## Monitoring
-
-### Logs
-
-**Render**:
-- View logs in the dashboard
-
-**Railway**:
-```bash
-railway logs
-```
-
-**Docker**:
-```bash
-docker-compose logs -f
-```
-
-### Performance
-
-- Monitor API response times
-- Check Celery task execution
-- Monitor Redis memory usage
-- Track database query performance
-
-## Troubleshooting
-
-### Backend not starting
-
-1. Check environment variables are set
-2. Verify database connection
-3. Check Redis connectivity
-4. Review logs for errors
-
-### Celery tasks not running
-
-1. Verify Redis connection
-2. Check Celery worker logs
-3. Ensure broker URL is correct
-4. Verify beat scheduler is running
-
-### Frontend can't connect to API
-
-1. Check CORS configuration
-2. Verify API URL in frontend environment
-3. Check network connectivity
-4. Review browser console for errors
-
-## Security Checklist
-
-- [ ] Change all default secrets
-- [ ] Use strong JWT secret
-- [ ] Enable HTTPS
-- [ ] Configure proper CORS origins
-- [ ] Secure Redis with password
-- [ ] Use Supabase RLS policies
-- [ ] Enable rate limiting
-- [ ] Set up monitoring alerts
-- [ ] Regular security updates
-- [ ] Backup database regularly
-
-## Scaling
-
-### Horizontal Scaling
-
-- Add more backend instances
-- Scale Celery workers based on load
-- Use Redis cluster for high availability
-
-### Vertical Scaling
-
-- Increase container resources
-- Optimize database queries
-- Use connection pooling
-
-## Backup Strategy
-
-1. **Database**: Supabase automatic backups
-2. **Redis**: Use Redis persistence (RDB/AOF)
-3. **ML Models**: Store in cloud storage
-4. **Environment configs**: Secure vault
-
-## Cost Optimization
-
-- Use appropriate instance sizes
-- Enable auto-scaling
-- Monitor resource usage
-- Optimize database queries
-- Cache frequently accessed data
-- Use CDN for frontend assets
-
-## Support
-
-For issues:
-1. Check logs
-2. Review this guide
-3. Check GitHub issues
-4. Contact support
-
----
-
-**Note**: Always test in staging before deploying to production.
+Provider-specific pricing, dashboards, and deployment recipes are not verified here. The deployment target must be configured and tested separately.

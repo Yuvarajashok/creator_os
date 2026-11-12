@@ -1,248 +1,38 @@
-# Creator OS - AI-Powered Instagram Growth Intelligence Platform
+# Creator OS
 
-A complete production-ready SaaS platform that provides strategic recommendations for Instagram creators.
+A prototype Instagram growth-intelligence dashboard built with FastAPI, React/TypeScript, PostgreSQL, Redis, Celery, and scikit-learn.
 
-## Features
+## Implemented building blocks
 
-- **AI Intelligence Engine**: Strategic growth recommendations based on multi-signal analysis
-- **Virality Predictor**: ML-powered prediction of post viral potential
-- **Multi-User Support**: JWT authentication with role-based access
-- **Page Management**: Manage multiple Instagram pages
-- **Post Analytics**: Track engagement, reach, and conversion metrics
-- **Background Tasks**: Automated data sync and intelligence generation
-- **Real-time Dashboard**: React-based analytics visualization
+- JWT registration/login and user-owned page/post routes.
+- Page and post management with metrics.
+- Seven-signal scoring, recommendations, and a Random Forest virality component.
+- Dashboard charts and background-task definitions.
+- Synthetic demo data for local exploration.
 
-## Tech Stack
+## Status and limits
 
-### Backend
-- FastAPI (async)
-- PostgreSQL (via Supabase)
-- Redis
-- Celery
-- SQLAlchemy
-- Pydantic v2
-- scikit-learn
-- JWT authentication
+This is **not a verified production-ready deployment**. Background Instagram sync currently generates random demo metrics; it does not connect to Instagram. Scores are prototype heuristics, not validated predictions of future growth. Setting INSTAGRAM_API_ENABLED does not implement an Instagram integration.
 
-### Frontend
-- React 18
-- TypeScript
-- TailwindCSS
-- Recharts
-- Axios
-- React Router
+The checked-in Docker Compose frontend configuration conflicts with the frontend image, and the ORM model contains a reserved-name issue. See [known issues and testing](docs/TESTING_AND_LIMITATIONS.md) before following setup instructions.
 
-## Quick Start
+## Documentation
 
-### Prerequisites
-- Docker & Docker Compose
-- Node.js 18+
-- Python 3.11+
-- Supabase account
+- [Setup and environment](SETUP.md)
+- [API reference](API.md)
+- [Architecture and scoring](ARCHITECTURE.md)
+- [Deployment considerations](DEPLOYMENT.md)
+- [Project status](PROJECT_SUMMARY.md)
+- [User workflow and data handling](docs/USER_GUIDE.md)
+- [Testing and limitations](docs/TESTING_AND_LIMITATIONS.md)
+- [Contributing](CONTRIBUTING.md)
 
-### 1. Clone and Setup
+The backend defines /health and /docs on port 8000. The Vite development configuration uses port 3000. These are local endpoints, not a hosted demo.
 
-```bash
-# Copy environment variables
-cp .env.example .env
+## Licensing
 
-# Edit .env with your Supabase credentials
-```
+The original README stated MIT, but no LICENSE file is supplied in the repository. That historical declaration is preserved here; a complete license file and copyright attribution remain for the owner to establish. This documentation update does not choose new license terms.
 
-### 2. Configure Supabase
+## Verification scope
 
-Run the database migrations in your Supabase dashboard or use the Supabase CLI.
-
-### 3. Start Services
-
-```bash
-# Start all services
-docker-compose up -d
-
-# View logs
-docker-compose logs -f
-```
-
-### 4. Access Application
-
-- Frontend: http://localhost:3000
-- Backend API: http://localhost:8000
-- API Docs: http://localhost:8000/docs
-
-### 5. Create Test User
-
-```bash
-# Run seed data script
-cd backend
-python scripts/seed_data.py
-```
-
-Default test user:
-- Email: demo@creatoros.com
-- Password: demo123456
-
-## Local Development (Without Docker)
-
-### Backend Setup
-
-```bash
-cd backend
-
-# Create virtual environment
-python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
-
-# Install dependencies
-pip install -r requirements.txt
-
-# Run migrations (via Supabase)
-# See database/migrations/
-
-# Start Redis
-redis-server
-
-# Start Celery worker
-celery -A background_tasks.celery_app worker --loglevel=info
-
-# Start Celery beat
-celery -A background_tasks.celery_app beat --loglevel=info
-
-# Start FastAPI server
-uvicorn main:app --reload --host 0.0.0.0 --port 8000
-```
-
-### Frontend Setup
-
-```bash
-cd frontend
-
-# Install dependencies
-npm install
-
-# Start development server
-npm run dev
-```
-
-## API Documentation
-
-### Authentication
-
-```bash
-# Register
-curl -X POST http://localhost:8000/api/v1/auth/register \
-  -H "Content-Type: application/json" \
-  -d '{"email":"user@example.com","password":"password123","full_name":"John Doe"}'
-
-# Login
-curl -X POST http://localhost:8000/api/v1/auth/login \
-  -H "Content-Type: application/json" \
-  -d '{"username":"user@example.com","password":"password123"}'
-```
-
-### Intelligence API
-
-```bash
-# Get intelligence score
-curl -X GET http://localhost:8000/api/v1/intelligence/{page_id} \
-  -H "Authorization: Bearer YOUR_TOKEN"
-```
-
-## Intelligence Engine
-
-The system computes an overall intelligence score (0-100) using weighted signals:
-
-- **Posting Consistency** (10%): Regular posting frequency
-- **Reach Trend** (15%): Growth in impressions
-- **Conversion Health** (15%): Profile visits from content
-- **Momentum** (20%): Follower growth rate
-- **Engagement Stability** (10%): Consistent interaction rates
-- **Viral Probability** (20%): ML-predicted virality
-- **Content Fatigue** (-10%): Penalty for declining performance
-
-### Growth Stages
-
-- **80-100**: Dominant Growth
-- **60-79**: Stable Growth
-- **40-59**: At Risk
-- **0-39**: Critical
-
-## Deployment
-
-### Render
-
-```bash
-# Backend
-- New Web Service
-- Build Command: pip install -r requirements.txt
-- Start Command: gunicorn main:app -w 4 -k uvicorn.workers.UvicornWorker
-
-# Frontend
-- New Static Site
-- Build Command: npm install && npm run build
-- Publish Directory: dist
-```
-
-### Railway
-
-```bash
-# Deploy with Railway CLI
-railway up
-```
-
-### DigitalOcean App Platform
-
-Use the included Dockerfiles for container deployment.
-
-## Project Structure
-
-```
-creator-os/
-├── backend/
-│   ├── main.py
-│   ├── core/
-│   │   ├── config.py
-│   │   └── security.py
-│   ├── database.py
-│   ├── models/
-│   ├── schemas/
-│   ├── routes/
-│   ├── analytics/
-│   ├── intelligence/
-│   ├── ai_engine/
-│   ├── background_tasks/
-│   ├── services/
-│   └── utils/
-├── frontend/
-│   ├── src/
-│   │   ├── pages/
-│   │   ├── components/
-│   │   ├── services/
-│   │   ├── hooks/
-│   │   └── context/
-│   └── package.json
-├── docker-compose.yml
-└── README.md
-```
-
-## Testing
-
-```bash
-# Backend tests
-cd backend
-pytest
-
-# API validation
-python scripts/test_api.py
-```
-
-## Environment Variables
-
-See `.env.example` for all required configuration.
-
-## License
-
-MIT
-
-## Support
-
-For issues and questions, please open a GitHub issue.
+Documentation has been reviewed against source files, without deploying services or running a production/ML benchmark. No screenshot, successful deployment, or test-pass claim is fabricated.
